@@ -1,6 +1,8 @@
 import * as http from "node:http"
 import * as tls from "node:tls"
 
+import { applyGlobalProxyToEnv } from "./proxy"
+
 type NodeHttpWithEnvProxy = typeof http & {
   setGlobalProxyFromEnv: () => void
 }
@@ -52,6 +54,7 @@ async function start(command: StartCommand) {
   try {
     prepareSidecarEnv(command.password, command.userDataPath)
     ensureLoopbackNoProxy()
+    applyGlobalProxy()
     useSystemCertificates()
     useEnvProxy()
     const { Server } = await import("virtual:opencode-server")
@@ -124,6 +127,14 @@ function useEnvProxy() {
     ;(http as NodeHttpWithEnvProxy).setGlobalProxyFromEnv()
   } catch (error) {
     console.warn("failed to load proxy environment", error)
+  }
+}
+
+function applyGlobalProxy() {
+  try {
+    applyGlobalProxyToEnv((message, meta) => console.log(`[sidecar] ${message}`, meta ?? ""))
+  } catch (error) {
+    console.warn("failed to apply global proxy", error)
   }
 }
 

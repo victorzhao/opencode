@@ -110,6 +110,10 @@ export const Info = Schema.Struct({
   provider: Schema.optional(Schema.Record(Schema.String, ConfigProviderV1.Info)).annotate({
     description: "Custom provider configurations and model overrides",
   }),
+  proxy: Schema.optional(Schema.String).annotate({
+    description:
+      "Default proxy URL (http, https, or socks, with optional credentials) for model requests. Providers and models can override this with their own `proxy` option, or set `proxy: false` to connect directly. Environment proxy variables apply when neither is set.",
+  }),
   mcp: Schema.optional(
     Schema.Record(Schema.String, Schema.Union([ConfigMCPV1.Info, Schema.Struct({ enabled: Schema.Boolean })])),
   ).annotate({ description: "MCP (Model Context Protocol) server configurations" }),

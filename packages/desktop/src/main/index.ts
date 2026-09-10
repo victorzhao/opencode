@@ -46,6 +46,7 @@ import { createWslServersController } from "./wsl/servers"
 import { registerWslIpcHandlers } from "./wsl/ipc"
 import { spawnWslSidecar } from "./wsl/sidecar"
 import { migrate } from "./migrate"
+import { applyGlobalProxyToEnv } from "./proxy"
 import { cleanupStoreFiles } from "./store-cleanup"
 import { startBackgroundCli } from "./background-cli"
 import { setNativeTranslations } from "./native-translations"
@@ -189,6 +190,7 @@ const main = Effect.gen(function* () {
   })
 
   ensureLoopbackNoProxy()
+  applyGlobalProxyToEnv((message, meta) => logger.log(message, meta))
   useEnvProxy()
   app.commandLine.appendSwitch("proxy-bypass-list", "<-loopback>")
   const features = app.commandLine.getSwitchValue("enable-features")
@@ -328,6 +330,7 @@ const main = Effect.gen(function* () {
     logger.log("sidecar connection started", { version: SIDECAR_VERSION })
 
     ensureLoopbackNoProxy()
+    applyGlobalProxyToEnv((message, meta) => logger.log(message, meta))
     useEnvProxy()
 
     if (SIDECAR_VERSION === "v2") {

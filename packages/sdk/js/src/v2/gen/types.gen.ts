@@ -1744,6 +1744,7 @@ export type ProviderConfig = {
   options?: {
     apiKey?: string
     baseURL?: string
+    proxy?: string | false
     enterpriseUrl?: string
     setCacheKey?: boolean
     /**
@@ -1758,7 +1759,19 @@ export type ProviderConfig = {
      * Timeout in milliseconds between streamed SSE chunks for this provider (default: 300000). If no chunk arrives within this window, the request is aborted. Set to false to disable timeout.
      */
     chunkTimeout?: number | false
-    [key: string]: unknown | string | boolean | number | false | number | false | number | false | undefined
+    [key: string]:
+      | unknown
+      | string
+      | string
+      | false
+      | boolean
+      | number
+      | false
+      | number
+      | false
+      | number
+      | false
+      | undefined
   }
   models?: {
     [key: string]: {
@@ -1955,6 +1968,7 @@ export type Config = {
   provider?: {
     [key: string]: ProviderConfig
   }
+  proxy?: string
   mcp?: {
     [key: string]:
       | McpLocalConfig

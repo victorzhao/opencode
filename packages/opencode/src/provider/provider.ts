@@ -24,6 +24,7 @@ import { InstanceState } from "@/effect/instance-state"
 import { EffectPromise } from "@/effect/promise"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { isRecord } from "@/util/record"
+import { ModelProxy } from "@/util/proxy"
 import { optional } from "@opencode-ai/core/schema"
 import { ProviderTransform } from "./transform"
 import { ProviderV2 } from "@opencode-ai/core/provider"
@@ -1212,6 +1213,7 @@ interface State {
   sdk: Map<string, BundledSDK>
   modelLoaders: Record<string, CustomModelLoader>
   varsLoaders: Record<string, CustomVarsLoader>
+  proxyBypassConfigured: boolean
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Provider") {}
@@ -1725,16 +1727,24 @@ const layer = Layer.effect(
           sdk,
           modelLoaders,
           varsLoaders,
+          proxyBypassConfigured: Object.values(providers).some((provider) => ModelProxy.hasBypass(provider)),
         }
       }),
     )
 
     const list = Effect.fn("Provider.list")(() => InstanceState.use(state, (s) => s.providers))
 
-    async function resolveSDK(model: Model, s: State, envs: Record<string, string | undefined>) {
+    async function resolveSDK(
+      model: Model,
+      s: State,
+      envs: Record<string, string | undefined>,
+      globalProxy: unknown,
+    ) {
       try {
         const provider = s.providers[model.providerID]
         const options = { ...provider.options }
+        const proxy = ModelProxy.resolveProxy(model.options?.proxy, provider.options?.proxy, globalProxy)
+        delete options["proxy"]
 
         if (
           model.providerID === "google-vertex" &&
@@ -1818,11 +1828,22 @@ const layer = Layer.effect(
           const combined = signals.length === 0 ? null : signals.length === 1 ? signals[0] : AbortSignal.any(signals)
           if (combined) opts.signal = combined
 
-          const res = await fetchFn(input, {
-            ...opts,
-            // @ts-ignore see here: https://github.com/oven-sh/bun/issues/16682
-            timeout: false,
-          }).finally(() => headerTimeoutCtl?.clear())
+          const bun = ModelProxy.isBunRuntime()
+          const request = () =>
+            fetchFn(input, {
+              ...opts,
+              // Bun honors a per-request proxy ("" disables it); Node ignores
+              // the key and relies on the process environment instead.
+              ...(bun && proxy !== undefined ? { proxy: proxy === false ? "" : proxy } : {}),
+              // @ts-ignore see here: https://github.com/oven-sh/bun/issues/16682
+              timeout: false,
+            }).finally(() => headerTimeoutCtl?.clear())
+
+          const res = await (proxy === false && !bun
+            ? ModelProxy.withDirectConnection(request)
+            : !bun && s.proxyBypassConfigured
+              ? ModelProxy.withProxyLock(request)
+              : request())
 
           if (!chunkAbortCtl) return res
           return wrapSSE(res, chunkTimeout, chunkAbortCtl)
@@ -1896,13 +1917,14 @@ const layer = Layer.effect(
     const getLanguage = Effect.fn("Provider.getLanguage")(function* (model: Model) {
       const s = yield* InstanceState.get(state)
       const envs = yield* env.all()
+      const cfg = yield* config.get()
       const key = `${model.providerID}/${model.id}`
       if (s.models.has(key)) return s.models.get(key)!
 
       const provider = s.providers[model.providerID]
       return yield* EffectPromise.refineRejection(
         async () => {
-          const sdk = await resolveSDK(model, s, envs)
+          const sdk = await resolveSDK(model, s, envs, cfg.proxy)
           const language = s.modelLoaders[model.providerID]
             ? await s.modelLoaders[model.providerID](
                 sdk,

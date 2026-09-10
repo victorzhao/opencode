@@ -79,6 +79,11 @@ export const Model = Schema.Struct({
   ),
 })
 
+export const Proxy = Schema.Union([Schema.String, Schema.Literal(false)]).annotate({
+  description:
+    "Proxy for requests to this provider: a proxy URL (http, https, or socks, with optional credentials) or false to connect directly, bypassing any configured proxy. Inherits the global proxy setting when omitted.",
+})
+
 export const Info = Schema.Struct({
   api: Schema.optional(Schema.String),
   name: Schema.optional(Schema.String),
@@ -92,6 +97,7 @@ export const Info = Schema.Struct({
       Schema.Struct({
         apiKey: Schema.optional(Schema.String),
         baseURL: Schema.optional(Schema.String),
+        proxy: Schema.optional(Proxy),
         enterpriseUrl: Schema.optional(Schema.String).annotate({
           description: "GitHub Enterprise URL for copilot authentication",
         }),

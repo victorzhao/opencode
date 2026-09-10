@@ -882,6 +882,7 @@ export const dict = {
 
   "settings.tab.general": "通用",
   "settings.tab.shortcuts": "快捷键",
+  "settings.tab.proxy": "代理",
 
   "settings.desktop.section.wsl": "WSL",
   "settings.desktop.wsl.title": "WSL 集成",
@@ -1050,6 +1051,27 @@ export const dict = {
 
   "settings.models.title": "模型",
   "settings.models.description": "可在此处配置模型设置。",
+
+  "settings.proxy.title": "代理",
+  "settings.proxy.unavailable": "当前服务器不支持代理设置。",
+  "settings.proxy.section.global": "默认代理",
+  "settings.proxy.global.title": "代理地址",
+  "settings.proxy.global.description":
+    "所有模型请求的默认代理，例如 http://127.0.0.1:7890。支持 http、https 和 socks 代理，可在地址中携带 user:password 认证。留空则跟随 HTTP_PROXY、HTTPS_PROXY 与 NO_PROXY 环境变量。",
+  "settings.proxy.global.save": "保存",
+  "settings.proxy.global.clear": "清空",
+  "settings.proxy.global.invalid": "请输入有效的代理地址，例如 http://127.0.0.1:7890",
+  "settings.proxy.global.saved": "代理已更新",
+  "settings.proxy.global.restart": "重启",
+  "settings.proxy.global.restartHint": "桌面端在启动时应用默认代理，请重启应用使修改生效。",
+  "settings.proxy.section.providers": "供应商",
+  "settings.proxy.providers.description": "控制每个供应商是否走代理。模型默认继承供应商设置，可在下方单独覆盖。",
+  "settings.proxy.providers.empty": "暂无已连接的供应商",
+  "settings.proxy.mode.follow": "使用代理",
+  "settings.proxy.mode.direct": "直连",
+  "settings.proxy.section.models": "模型",
+  "settings.proxy.models.description": "单独覆盖某个模型的代理行为。关闭表示该模型始终直连。",
+
 
   "settings.agents.title": "智能体",
   "settings.agents.description": "可在此处配置智能体设置。",

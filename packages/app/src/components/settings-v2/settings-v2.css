@@ -727,3 +727,42 @@
   line-height: 1;
   color: var(--v2-state-fg-danger);
 }
+
+.settings-v2-proxy-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.settings-v2-proxy-edit [data-component="text-input-v2"] {
+  width: 100%;
+}
+
+.settings-v2-proxy-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-v2-proxy-error {
+  font-size: 11px;
+  font-weight: 440;
+  line-height: 1.4;
+  color: var(--v2-state-fg-danger);
+}
+
+.settings-v2-proxy-provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-v2-section-note {
+  font-size: 12px;
+  font-weight: 440;
+  line-height: 1.5;
+  color: var(--v2-text-text-muted);
+}

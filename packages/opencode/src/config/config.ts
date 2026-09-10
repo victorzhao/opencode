@@ -170,7 +170,36 @@ function writableGlobal(info: Info) {
   const next = writable(info)
   // When a user changes config from a value back to default in the Desktop app, we don't want to leave a blank `"shell": "",` key
   if ("shell" in next && next.shell === "") return { ...next, shell: undefined }
-  return next
+  return stripEmptyProxy(next)
+}
+
+// An empty-string proxy means "inherit" (same as unset). Normalize it to
+// undefined so mergeDeep removes the key instead of persisting `"proxy": ""`.
+function stripEmptyProxy(info: Info): Info {
+  const next = { ...info }
+  if (next.proxy === "") next.proxy = undefined
+  if (!next.provider) return next
+  const provider: Record<string, unknown> = {}
+  for (const [id, entry] of Object.entries(next.provider)) {
+    if (!isRecord(entry)) {
+      provider[id] = entry
+      continue
+    }
+    const patched: Record<string, unknown> = { ...entry }
+    if (isRecord(entry.options) && entry.options.proxy === "") patched.options = { ...entry.options, proxy: undefined }
+    if (isRecord(entry.models)) {
+      patched.models = Object.fromEntries(
+        Object.entries(entry.models).map(([modelID, model]) => [
+          modelID,
+          isRecord(model) && isRecord(model.options) && model.options.proxy === ""
+            ? { ...model, options: { ...model.options, proxy: undefined } }
+            : model,
+        ]),
+      )
+    }
+    provider[id] = patched
+  }
+  return { ...next, provider: provider as Info["provider"] }
 }
 
 const layer = Layer.effect(
