@@ -40,6 +40,28 @@ export class ApiVcsApplyError extends Schema.ErrorClass<ApiVcsApplyError>("VcsAp
   { httpApiStatus: 400 },
 ) {}
 
+export class ApiVcsCommitError extends Schema.ErrorClass<ApiVcsCommitError>("VcsCommitError")(
+  {
+    name: Schema.Literal("VcsCommitError"),
+    data: Schema.Struct({
+      message: Schema.String,
+      reason: Schema.Literals(["non-git", "empty-message", "nothing-to-commit", "commit-failed"]),
+    }),
+  },
+  { httpApiStatus: 400 },
+) {}
+
+export class ApiVcsMessageError extends Schema.ErrorClass<ApiVcsMessageError>("VcsMessageError")(
+  {
+    name: Schema.Literal("VcsMessageError"),
+    data: Schema.Struct({
+      message: Schema.String,
+      reason: Schema.Literals(["non-git", "nothing-to-commit", "no-model", "generate-failed"]),
+    }),
+  },
+  { httpApiStatus: 400 },
+) {}
+
 export const InstancePaths = {
   dispose: "/instance/dispose",
   path: "/path",
@@ -48,6 +70,8 @@ export const InstancePaths = {
   vcsDiff: "/vcs/diff",
   vcsDiffRaw: "/vcs/diff/raw",
   vcsApply: "/vcs/apply",
+  vcsCommit: "/vcs/commit",
+  vcsMessage: "/vcs/message",
   command: "/command",
   agent: "/agent",
   skill: "/skill",
@@ -134,6 +158,29 @@ export const InstanceApi = HttpApi.make("instance")
             identifier: "vcs.apply",
             summary: "Apply VCS patch",
             description: "Apply a raw patch to the current working tree.",
+          }),
+        ),
+        HttpApiEndpoint.post("vcsCommit", InstancePaths.vcsCommit, {
+          query: WorkspaceRoutingQuery,
+          payload: Vcs.CommitInput,
+          success: described(Vcs.CommitResult, "VCS changes committed"),
+          error: ApiVcsCommitError,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "vcs.commit",
+            summary: "Commit VCS changes",
+            description: "Stage all working tree changes and create a git commit with the given message.",
+          }),
+        ),
+        HttpApiEndpoint.post("vcsMessage", InstancePaths.vcsMessage, {
+          query: WorkspaceRoutingQuery,
+          success: described(Vcs.GenerateMessageResult, "VCS commit message generated"),
+          error: ApiVcsMessageError,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "vcs.message",
+            summary: "Generate VCS commit message",
+            description: "Generate a commit message for current uncommitted changes with AI.",
           }),
         ),
         HttpApiEndpoint.get("command", InstancePaths.command, {

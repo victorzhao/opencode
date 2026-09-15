@@ -3,7 +3,7 @@ import { chmod, copyFile, mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-const CLI_VERSION = "0.0.0-next-16350"
+const CLI_VERSION = "0.0.0-next-202607010251"
 
 export type Channel = "dev" | "beta" | "prod"
 

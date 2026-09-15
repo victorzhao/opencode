@@ -56,6 +56,7 @@ import {
 import { setSessionHandoff } from "@/pages/session/handoff"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { SessionFileBrowserTab, type SessionFileBrowserState } from "@/pages/session/v2/session-file-browser-tab"
+import { VcsCommitBarV2 } from "@/pages/session/v2/vcs-commit-bar-v2"
 
 type ReviewDiff = FileDiffInfo | SnapshotFileDiff | VcsFileDiff
 type RenderDiff = FileDiffInfo | (SnapshotFileDiff & { file: string }) | VcsFileDiff
@@ -81,6 +82,9 @@ export function SessionSidePanel(props: {
   reviewSnap: boolean
   size: Sizing
   stacked?: boolean
+  commitVisible?: () => boolean
+  commitDirectory?: () => string
+  commitDisabled?: () => boolean
 }) {
   const layout = useLayout()
   const settings = useSettings()
@@ -799,6 +803,13 @@ export function SessionSidePanel(props: {
                     </Tabs.List>
                     <Show when={fileTreeTab() === "changes"}>
                       <Tabs.Content value="changes" class="bg-background-stronger px-3 py-0">
+                        <Show when={props.commitVisible?.() ?? false}>
+                          <VcsCommitBarV2
+                            directory={props.commitDirectory?.() ?? projectDirectory()}
+                            disabled={props.commitDisabled?.() ?? !props.diffsReady()}
+                            hasChanges={props.hasReview()}
+                          />
+                        </Show>
                         <Switch>
                           <Match when={props.hasReview() || !props.diffsReady()}>
                             <Show

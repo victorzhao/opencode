@@ -270,12 +270,38 @@ export type ApplyInput = Schema.Schema.Type<typeof ApplyInput>
 
 export const ApplyResult = Schema.Struct({
   applied: Schema.Boolean,
-})
+}).annotate({ identifier: "VcsApplyResult" })
 export type ApplyResult = Schema.Schema.Type<typeof ApplyResult>
+
+export const CommitInput = Schema.Struct({
+  message: Schema.String,
+}).annotate({ identifier: "VcsCommitInput" })
+export type CommitInput = Schema.Schema.Type<typeof CommitInput>
+
+export const CommitResult = Schema.Struct({
+  committed: Schema.Boolean,
+  hash: Schema.optional(Schema.String),
+}).annotate({ identifier: "VcsCommitResult" })
+export type CommitResult = Schema.Schema.Type<typeof CommitResult>
+
+export const GenerateMessageResult = Schema.Struct({
+  message: Schema.String,
+}).annotate({ identifier: "VcsGenerateMessageResult" })
+export type GenerateMessageResult = Schema.Schema.Type<typeof GenerateMessageResult>
 
 export class PatchApplyError extends Schema.TaggedErrorClass<PatchApplyError>()("VcsPatchApplyError", {
   message: Schema.String,
   reason: Schema.Literals(["non-git", "not-clean"]),
+}) {}
+
+export class CommitError extends Schema.TaggedErrorClass<CommitError>()("VcsCommitError", {
+  message: Schema.String,
+  reason: Schema.Literals(["non-git", "empty-message", "nothing-to-commit", "commit-failed"]),
+}) {}
+
+export class MessageError extends Schema.TaggedErrorClass<MessageError>()("VcsMessageError", {
+  message: Schema.String,
+  reason: Schema.Literals(["non-git", "nothing-to-commit", "no-model", "generate-failed"]),
 }) {}
 
 export interface Interface {
@@ -286,6 +312,7 @@ export interface Interface {
   readonly diff: (mode: Mode, options?: DiffOptions) => Effect.Effect<FileDiff[]>
   readonly diffRaw: () => Effect.Effect<string>
   readonly apply: (input: ApplyInput) => Effect.Effect<ApplyResult, PatchApplyError>
+  readonly commit: (input: CommitInput) => Effect.Effect<CommitResult, CommitError>
 }
 
 interface State {
@@ -414,10 +441,83 @@ const layer: Layer.Layer<Service, never, Git.Service | EventV2Bridge.Service> = 
         }
         return { applied: true }
       }),
+      commit: Effect.fn("Vcs.commit")(function* (input: CommitInput) {
+        const ctx = yield* InstanceState.context
+        if (ctx.project.vcs !== "git") {
+          return yield* new CommitError({
+            message: "Changes can't be committed because the project is not git-based",
+            reason: "non-git",
+          })
+        }
+        const message = input.message.trim()
+        if (!message) {
+          return yield* new CommitError({
+            message: "Commit message is required",
+            reason: "empty-message",
+          })
+        }
+        const status = yield* git.status(ctx.directory)
+        if (status.length === 0) {
+          return yield* new CommitError({
+            message: "There are no changes to commit",
+            reason: "nothing-to-commit",
+          })
+        }
+        const result = yield* git.commit(ctx.directory, message)
+        if (result.exitCode !== 0) {
+          const stderr = result.stderr.toString("utf8").trim()
+          const stdout = result.text().trim()
+          const output = stderr || stdout
+          if (/nothing to commit|no changes added|nothing added/i.test(output)) {
+            return yield* new CommitError({
+              message: "There are no changes to commit",
+              reason: "nothing-to-commit",
+            })
+          }
+          return yield* new CommitError({
+            message: output || "Failed to commit changes",
+            reason: "commit-failed",
+          })
+        }
+        const head = yield* git.run(["rev-parse", "HEAD"], { cwd: ctx.directory })
+        const hash = head.exitCode === 0 ? head.text().trim() || undefined : undefined
+        return { committed: true, hash }
+      }),
     })
   }),
 )
 
 export const node = LayerNode.make({ service: Service, layer: layer, deps: [Git.node, EventV2Bridge.node] })
+
+const COMMIT_PROMPT_BUDGET = 12_000
+const COMMIT_PATCH_BUDGET = 2_000
+
+export function buildCommitPrompt(
+  diffs: readonly {
+    readonly file: string
+    readonly status?: "added" | "deleted" | "modified"
+    readonly additions: number
+    readonly deletions: number
+    readonly patch?: string
+  }[],
+  budget = COMMIT_PROMPT_BUDGET,
+) {
+  const chunks: string[] = []
+  let used = 0
+  for (const diff of diffs) {
+    const header = `${diff.status ?? "modified"} ${diff.file} (+${diff.additions} -${diff.deletions})`
+    const patch = (diff.patch ?? "").slice(0, COMMIT_PATCH_BUDGET)
+    const chunk = patch ? `${header}\n${patch}` : header
+    if (used + chunk.length > budget) break
+    chunks.push(chunk)
+    used += chunk.length
+  }
+  return [
+    "Write a concise git commit message for the following changes.",
+    "Reply with only the message: a single short subject line in imperative mood, no quotes, no trailing period, under 72 characters.",
+    "",
+    chunks.join("\n\n"),
+  ].join("\n")
+}
 
 export * as Vcs from "./vcs"

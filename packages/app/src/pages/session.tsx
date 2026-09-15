@@ -87,6 +87,7 @@ import { SessionReviewEmptyChangesV2 } from "@opencode-ai/session-ui/v2/session-
 import { SessionReviewEmptyNoGitV2 } from "@opencode-ai/session-ui/v2/session-review-empty-no-git-v2"
 import { SessionReviewV2SidebarToggle } from "@opencode-ai/session-ui/v2/session-review-v2"
 import { ReviewPanelV2 } from "@/pages/session/v2/review-panel-v2"
+import { VcsCommitBarV2 } from "@/pages/session/v2/vcs-commit-bar-v2"
 import { createReviewPanelV2State } from "@/pages/session/v2/review-panel-v2-state"
 import { reviewDiffDirectory, reviewDiffNeedsLoad, reviewRootDirectory } from "@/pages/session/v2/review-diff-kinds"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
@@ -1350,6 +1351,9 @@ export default function Page() {
 
   const reviewPanelV2 = () => (
     <div class="flex flex-col h-full overflow-hidden bg-v2-background-bg-base contain-strict">
+      <Show when={reviewMode() === "git" && sync().project?.vcs === "git"}>
+        <VcsCommitBarV2 directory={sdk().directory} disabled={!reviewReady()} hasChanges={hasReview()} />
+      </Show>
       <Show when={reviewPanelV2Rendered()}>
         <ReviewPanelV2 {...reviewPanelV2Props()} />
       </Show>
@@ -1364,6 +1368,9 @@ export default function Page() {
         "bg-background-stronger": !settings.general.newLayoutDesigns(),
       }}
     >
+      <Show when={reviewMode() === "git" && sync().project?.vcs === "git"}>
+        <VcsCommitBarV2 directory={sdk().directory} disabled={!reviewReady()} hasChanges={hasReview()} />
+      </Show>
       <div class="relative pt-2 flex-1 min-h-0 overflow-hidden">
         {reviewContent({
           diffStyle: layout.review.diffStyle(),
@@ -2316,6 +2323,9 @@ export default function Page() {
               focusReviewDiff={focusReviewDiff}
               reviewSnap={ui.reviewSnap}
               size={size}
+              commitVisible={() => reviewMode() === "git" && sync().project?.vcs === "git"}
+              commitDirectory={() => sdk().directory}
+              commitDisabled={() => !reviewReady()}
             />
           </Suspense>
         </Show>
@@ -2347,6 +2357,9 @@ export default function Page() {
                       reviewSnap={ui.reviewSnap}
                       size={size}
                       stacked={desktopV2PanelLayout().stacked}
+                      commitVisible={() => reviewMode() === "git" && sync().project?.vcs === "git"}
+                      commitDirectory={() => sdk().directory}
+                      commitDisabled={() => !reviewReady()}
                     />
                   </Suspense>
                 </div>

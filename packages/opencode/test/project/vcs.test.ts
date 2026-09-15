@@ -1,4 +1,4 @@
-import { afterEach, describe, expect } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { FSUtil } from "@opencode-ai/core/fs-util"
 import { CrossSpawnSpawner } from "@opencode-ai/core/cross-spawn-spawner"
@@ -332,4 +332,93 @@ describe("Vcs diff", () => {
       }),
     { git: true },
   )
+})
+
+describe("Vcs commit", () => {
+  afterEach(async () => {
+    await disposeAllInstances()
+  })
+
+  it.instance(
+    "commit() stages working tree changes and returns the new hash",
+    () =>
+      Effect.gen(function* () {
+        const test = yield* TestInstance
+        yield* write(path.join(test.directory, "file.txt"), "original\n")
+        yield* git(test.directory, ["add", "."])
+        yield* git(test.directory, ["commit", "--no-gpg-sign", "-m", "add file"])
+        yield* write(path.join(test.directory, "file.txt"), "changed\n")
+        yield* write(path.join(test.directory, "added.txt"), "added\n")
+
+        const vcs = yield* init()
+        const result = yield* vcs.commit({ message: "commit from ui" })
+
+        expect(result.committed).toBe(true)
+        expect(result.hash).toBeString()
+        expect(yield* vcs.diff("git")).toEqual([])
+      }),
+    { git: true },
+  )
+
+  it.instance(
+    "commit() rejects an empty message",
+    () =>
+      Effect.gen(function* () {
+        const test = yield* TestInstance
+        yield* write(path.join(test.directory, "file.txt"), "changed\n")
+
+        const vcs = yield* init()
+        const error = yield* vcs.commit({ message: "   " }).pipe(Effect.flip)
+
+        expect(error.reason).toBe("empty-message")
+      }),
+    { git: true },
+  )
+
+  it.instance(
+    "commit() reports nothing-to-commit on a clean tree",
+    () =>
+      Effect.gen(function* () {
+        const vcs = yield* init()
+        const error = yield* vcs.commit({ message: "nothing here" }).pipe(Effect.flip)
+
+        expect(error.reason).toBe("nothing-to-commit")
+      }),
+    { git: true },
+  )
+
+  it.instance("commit() reports non-git outside a repository", () =>
+    Effect.gen(function* () {
+      const vcs = yield* init()
+      const error = yield* vcs.commit({ message: "nope" }).pipe(Effect.flip)
+
+      expect(error.reason).toBe("non-git")
+    }),
+  )
+})
+
+describe("Vcs.buildCommitPrompt", () => {
+  test("summarizes files with stats and patches", () => {
+    const prompt = Vcs.buildCommitPrompt([
+      { file: "a.txt", status: "modified", additions: 2, deletions: 1, patch: "diff --git a/a.txt" },
+      { file: "b.txt", status: "added", additions: 10, deletions: 0, patch: "" },
+    ])
+
+    expect(prompt).toContain("modified a.txt (+2 -1)")
+    expect(prompt).toContain("diff --git a/a.txt")
+    expect(prompt).toContain("added b.txt (+10 -0)")
+  })
+
+  test("stays within budget", () => {
+    const prompt = Vcs.buildCommitPrompt(
+      [
+        { file: "big.txt", status: "modified", additions: 1, deletions: 1, patch: "x".repeat(5000) },
+        { file: "small.txt", status: "added", additions: 1, deletions: 0, patch: "y" },
+      ],
+      100,
+    )
+
+    expect(prompt.length).toBeLessThan(1000)
+    expect(prompt).not.toContain("small.txt")
+  })
 })

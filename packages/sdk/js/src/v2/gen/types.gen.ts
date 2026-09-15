@@ -2345,11 +2345,44 @@ export type VcsFileDiff = {
   status?: "added" | "deleted" | "modified"
 }
 
+export type VcsApplyResult = {
+  applied: boolean
+}
+
 export type VcsApplyError = {
   name: "VcsApplyError"
   data: {
     message: string
     reason: "non-git" | "not-clean"
+  }
+}
+
+export type VcsCommitInput = {
+  message: string
+}
+
+export type VcsCommitResult = {
+  committed: boolean
+  hash?: string
+}
+
+export type VcsCommitError = {
+  name: "VcsCommitError"
+  data: {
+    message: string
+    reason: "non-git" | "empty-message" | "nothing-to-commit" | "commit-failed"
+  }
+}
+
+export type VcsGenerateMessageResult = {
+  message: string
+}
+
+export type VcsMessageError = {
+  name: "VcsMessageError"
+  data: {
+    message: string
+    reason: "non-git" | "nothing-to-commit" | "no-model" | "generate-failed"
   }
 }
 
@@ -8293,12 +8326,66 @@ export type VcsApplyResponses = {
   /**
    * VCS patch applied
    */
-  200: {
-    applied: boolean
-  }
+  200: VcsApplyResult
 }
 
 export type VcsApplyResponse = VcsApplyResponses[keyof VcsApplyResponses]
+
+export type VcsCommitData = {
+  body?: VcsCommitInput
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/vcs/commit"
+}
+
+export type VcsCommitErrors = {
+  /**
+   * VcsCommitError | InvalidRequestError
+   */
+  400: VcsCommitError | InvalidRequestError
+}
+
+export type VcsCommitError2 = VcsCommitErrors[keyof VcsCommitErrors]
+
+export type VcsCommitResponses = {
+  /**
+   * VCS changes committed
+   */
+  200: VcsCommitResult
+}
+
+export type VcsCommitResponse = VcsCommitResponses[keyof VcsCommitResponses]
+
+export type VcsMessageData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/vcs/message"
+}
+
+export type VcsMessageErrors = {
+  /**
+   * VcsMessageError | InvalidRequestError
+   */
+  400: VcsMessageError | InvalidRequestError
+}
+
+export type VcsMessageError2 = VcsMessageErrors[keyof VcsMessageErrors]
+
+export type VcsMessageResponses = {
+  /**
+   * VCS commit message generated
+   */
+  200: VcsGenerateMessageResult
+}
+
+export type VcsMessageResponse = VcsMessageResponses[keyof VcsMessageResponses]
 
 export type CommandListData = {
   body?: never
