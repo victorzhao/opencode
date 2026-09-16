@@ -667,6 +667,7 @@ export const dict = {
 
   "session.tab.session": "Session",
   "session.tab.review": "Review",
+  "session.tab.git": "Git",
   "session.tab.context": "Context",
   "session.tab.unknown": "Unknown Session",
   "session.panel.reviewAndFiles": "Review and files",

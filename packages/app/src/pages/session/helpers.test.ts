@@ -211,4 +211,35 @@ describe("createSessionTabs", () => {
       dispose()
     })
   })
+
+  test("keeps the git tab active when available", () => {
+    createRoot((dispose) => {
+      const [state] = createStore({ active: "git" as string | undefined, all: [] as string[] })
+      const tabs = createMemo(() => ({ active: () => state.active, all: () => state.all }))
+      const result = createSessionTabs({
+        tabs,
+        pathFromTab: () => undefined,
+        normalizeTab: (tab) => tab,
+        git: () => true,
+      })
+
+      expect(result.activeTab()).toBe("git")
+      expect(result.activeFileTab()).toBeUndefined()
+      dispose()
+    })
+
+    createRoot((dispose) => {
+      const [state] = createStore({ active: "git" as string | undefined, all: [] as string[] })
+      const tabs = createMemo(() => ({ active: () => state.active, all: () => state.all }))
+      const result = createSessionTabs({
+        tabs,
+        pathFromTab: () => undefined,
+        normalizeTab: (tab) => tab,
+        git: () => false,
+      })
+
+      expect(result.activeTab()).toBe("empty")
+      dispose()
+    })
+  })
 })

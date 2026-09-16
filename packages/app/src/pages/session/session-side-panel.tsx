@@ -56,6 +56,7 @@ import {
 import { setSessionHandoff } from "@/pages/session/handoff"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { SessionFileBrowserTab, type SessionFileBrowserState } from "@/pages/session/v2/session-file-browser-tab"
+import { SessionGitTab } from "@/pages/session/git-tab"
 import { VcsCommitBarV2 } from "@/pages/session/v2/vcs-commit-bar-v2"
 
 type ReviewDiff = FileDiffInfo | SnapshotFileDiff | VcsFileDiff
@@ -86,6 +87,8 @@ export function SessionSidePanel(props: {
   commitDirectory?: () => string
   commitDisabled?: () => boolean
   commitModel?: () => { providerID: string; modelID: string } | undefined
+  gitAvailable?: () => boolean
+  gitBranch?: () => string | undefined
 }) {
   const layout = useLayout()
   const settings = useSettings()
@@ -185,6 +188,7 @@ export function SessionSidePanel(props: {
     review: reviewTab,
     hasReview: props.canReview,
     fileBrowser: () => !!props.fileBrowserState,
+    git: () => props.gitAvailable?.() ?? false,
   })
   const contextOpen = tabState.contextOpen
   const openFileOpen = tabState.openFileOpen
@@ -192,6 +196,23 @@ export function SessionSidePanel(props: {
   const openedTabs = tabState.openedTabs
   const activeTab = tabState.activeTab
   const activeFileTab = tabState.activeFileTab
+
+  const gitTab = createMemo(() => isDesktop() && (props.gitAvailable?.() ?? false))
+  const gitPanel = () => (
+    <SessionGitTab
+      branch={props.gitBranch?.()}
+      diffs={diffs}
+      diffFiles={diffFiles}
+      kinds={kinds}
+      diffsReady={props.diffsReady}
+      directory={projectDirectory}
+      disabled={() => !props.diffsReady()}
+      hasChanges={props.hasReview}
+      model={props.commitModel}
+      activeDiff={props.activeDiff}
+      onFileClick={(path) => props.focusReviewDiff(path)}
+    />
+  )
 
   const fileTreeTab = () => layout.fileTree.tab()
 
@@ -243,7 +264,7 @@ export function SessionSidePanel(props: {
   })
   const fileBrowserVisible = createMemo(() => {
     const active = activeTab()
-    return active !== "review" && active !== "context" && active !== "empty"
+    return active !== "review" && active !== "git" && active !== "context" && active !== "empty"
   })
   const openFileKeybind = createMemo(() => command.keybindParts("file.open"))
   const closeTabKeybind = createMemo(() => command.keybindParts("tab.close"))
@@ -368,6 +389,13 @@ export function SessionSidePanel(props: {
                                   </div>
                                 </Tabs.Trigger>
                               </Show>
+                              <Show when={gitTab()}>
+                                <Tabs.Trigger value="git">
+                                  <div class="flex items-center gap-1.5">
+                                    <div>{language.t("session.tab.git")}</div>
+                                  </div>
+                                </Tabs.Trigger>
+                              </Show>
                               <Show when={contextOpen()}>
                                 <Tabs.Trigger
                                   value="context"
@@ -482,6 +510,16 @@ export function SessionSidePanel(props: {
                             </div>
                           </Show>
 
+                          <Show when={gitTab() && activeTab() === "git"}>
+                            <div
+                              role="tabpanel"
+                              data-slot="tabs-content"
+                              class="flex flex-col h-full overflow-hidden contain-strict"
+                            >
+                              {gitPanel()}
+                            </div>
+                          </Show>
+
                           <Show when={activeTab() === "empty"}>
                             <Tabs.Content value="empty" class="flex flex-col h-full overflow-hidden contain-strict">
                               <div class="relative pt-2 flex-1 min-h-0 overflow-hidden">
@@ -575,6 +613,9 @@ export function SessionSidePanel(props: {
                                   ? language.t("session.review.filesChanged", { count: props.reviewCount() })
                                   : language.t("session.tab.review")}
                               </Tabs.Trigger>
+                            </Show>
+                            <Show when={gitTab()}>
+                              <Tabs.Trigger value="git">{language.t("session.tab.git")}</Tabs.Trigger>
                             </Show>
                             <Show when={contextOpen()}>
                               <Tabs.Trigger
@@ -707,6 +748,16 @@ export function SessionSidePanel(props: {
                             class="flex flex-col h-full overflow-hidden contain-strict"
                           >
                             {props.reviewPanel()}
+                          </div>
+                        </Show>
+
+                        <Show when={gitTab() && activeTab() === "git"}>
+                          <div
+                            role="tabpanel"
+                            data-slot="tabs-content"
+                            class="flex flex-col h-full overflow-hidden contain-strict"
+                          >
+                            {gitPanel()}
                           </div>
                         </Show>
 

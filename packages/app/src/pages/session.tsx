@@ -2342,6 +2342,8 @@ export default function Page() {
               commitDirectory={() => sdk().directory}
               commitDisabled={() => !reviewReady()}
               commitModel={commitModel}
+              gitAvailable={() => sync().project?.vcs === "git"}
+              gitBranch={() => sync().data.vcs?.branch}
             />
           </Suspense>
         </Show>
@@ -2377,6 +2379,8 @@ export default function Page() {
                       commitDirectory={() => sdk().directory}
                       commitDisabled={() => !reviewReady()}
                       commitModel={commitModel}
+                      gitAvailable={() => sync().project?.vcs === "git"}
+                      gitBranch={() => sync().data.vcs?.branch}
                     />
                   </Suspense>
                 </div>
