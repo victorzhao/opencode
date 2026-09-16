@@ -2328,6 +2328,8 @@ export type Path = {
 export type VcsInfo = {
   branch?: string
   default_branch?: string
+  ahead?: number
+  behind?: number
 }
 
 export type VcsFileStatus = {

@@ -764,6 +764,7 @@ export const dict = {
   "session.review.commit.push": "推送",
   "session.review.commit.pushLoading": "推送中...",
   "session.review.commit.pushSuccess": "已推送",
+  "session.review.commit.pushCount": "推送 {{count}}",
   "session.review.commit.pull": "拉取",
   "session.review.commit.pullLoading": "拉取中...",
   "session.review.commit.pullSuccess": "已拉取",

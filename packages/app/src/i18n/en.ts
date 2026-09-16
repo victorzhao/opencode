@@ -700,6 +700,7 @@ export const dict = {
   "session.review.commit.push": "Push",
   "session.review.commit.pushLoading": "Pushing...",
   "session.review.commit.pushSuccess": "Changes pushed",
+  "session.review.commit.pushCount": "Push {{count}}",
   "session.review.commit.pull": "Pull",
   "session.review.commit.pullLoading": "Pulling...",
   "session.review.commit.pullSuccess": "Changes pulled",

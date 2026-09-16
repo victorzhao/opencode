@@ -496,6 +496,45 @@ describe("Vcs pull", () => {
   )
 })
 
+describe("Vcs aheadBehind", () => {
+  afterEach(async () => {
+    await disposeAllInstances()
+  })
+
+  it.instance(
+    "aheadBehind() tracks commits ahead of and behind the upstream",
+    () =>
+      Effect.gen(function* () {
+        const test = yield* TestInstance
+        const remote = yield* tmpdirScoped()
+        const origin = path.join(remote, "origin.git")
+        yield* git(test.directory, ["init", "--bare", origin])
+        yield* git(test.directory, ["remote", "add", "origin", origin])
+        yield* write(path.join(test.directory, "count.txt"), "one\n")
+
+        const vcs = yield* init()
+        expect(yield* vcs.aheadBehind()).toBeUndefined()
+        yield* vcs.commit({ message: "first" })
+        yield* vcs.push()
+        expect(yield* vcs.aheadBehind()).toEqual({ ahead: 0, behind: 0 })
+        yield* write(path.join(test.directory, "count.txt"), "two\n")
+        yield* vcs.commit({ message: "second" })
+        expect(yield* vcs.aheadBehind()).toEqual({ ahead: 1, behind: 0 })
+        yield* vcs.push()
+        yield* git(test.directory, ["reset", "--hard", "HEAD~1"])
+        expect(yield* vcs.aheadBehind()).toEqual({ ahead: 0, behind: 1 })
+      }),
+    { git: true },
+  )
+
+  it.instance("aheadBehind() returns undefined outside a repository", () =>
+    Effect.gen(function* () {
+      const vcs = yield* init()
+      expect(yield* vcs.aheadBehind()).toBeUndefined()
+    }),
+  )
+})
+
 describe("Vcs.buildCommitPrompt", () => {
   test("summarizes files with stats and patches", () => {
     const prompt = Vcs.buildCommitPrompt([

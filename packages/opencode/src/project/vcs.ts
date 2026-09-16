@@ -240,6 +240,8 @@ export const Event = VcsEvent
 export const Info = Schema.Struct({
   branch: Schema.optional(Schema.String),
   default_branch: Schema.optional(Schema.String),
+  ahead: Schema.optional(Schema.Finite),
+  behind: Schema.optional(Schema.Finite),
 }).annotate({ identifier: "VcsInfo" })
 export type Info = Schema.Schema.Type<typeof Info>
 
@@ -341,6 +343,7 @@ export interface Interface {
   readonly commit: (input: CommitInput) => Effect.Effect<CommitResult, CommitError>
   readonly push: () => Effect.Effect<PushResult, PushError>
   readonly pull: () => Effect.Effect<PullResult, PullError>
+  readonly aheadBehind: () => Effect.Effect<{ ahead: number; behind: number } | undefined>
 }
 
 interface State {
@@ -565,6 +568,11 @@ const layer: Layer.Layer<Service, never, Git.Service | EventV2Bridge.Service> = 
           return yield* new PullError({ message: output, reason: "pull-failed" })
         }
         return { pulled: true }
+      }),
+      aheadBehind: Effect.fn("Vcs.aheadBehind")(function* () {
+        const ctx = yield* InstanceState.context
+        if (ctx.project.vcs !== "git") return undefined
+        return yield* git.aheadBehind(ctx.directory)
       }),
     })
   }),

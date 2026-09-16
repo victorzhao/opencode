@@ -1,5 +1,5 @@
 import { createSignal, Show } from "solid-js"
-import { useMutation, useQueryClient } from "@tanstack/solid-query"
+import { createQuery, useMutation, useQueryClient } from "@tanstack/solid-query"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
 import { useLanguage } from "@/context/language"
@@ -19,6 +19,20 @@ export function VcsCommitBarV2(props: {
   const queryClient = useQueryClient()
   const [message, setMessage] = createSignal("")
 
+  const counts = createQuery(() => ({
+    queryKey: ["vcs-counts", props.directory] as const,
+    queryFn: async () => {
+      const result = await sdk().client.vcs.get({ directory: props.directory }, { throwOnError: true })
+      return result.data
+    },
+    retry: 1,
+  }))
+  const ahead = () => counts.data?.ahead
+
+  const refreshCounts = () => {
+    void queryClient.invalidateQueries({ queryKey: ["vcs-counts"] })
+  }
+
   const commit = useMutation(() => ({
     mutationFn: async (input: string) => {
       const result = await sdk().client.vcs.commit(
@@ -30,6 +44,7 @@ export function VcsCommitBarV2(props: {
     onSuccess: () => {
       setMessage("")
       void queryClient.invalidateQueries({ queryKey: ["session-vcs"] })
+      refreshCounts()
       showToast({
         variant: "success",
         title: language.t("session.review.commit.success"),
@@ -75,6 +90,7 @@ export function VcsCommitBarV2(props: {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["session-vcs"] })
+      refreshCounts()
       showToast({
         variant: "success",
         title: language.t("session.review.commit.pushSuccess"),
@@ -96,6 +112,7 @@ export function VcsCommitBarV2(props: {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["session-vcs"] })
+      refreshCounts()
       showToast({
         variant: "success",
         title: language.t("session.review.commit.pullSuccess"),
@@ -115,6 +132,13 @@ export function VcsCommitBarV2(props: {
   const canGenerate = () => props.hasChanges && !props.disabled && !busy()
   const canPush = () => !props.disabled && !busy()
   const canPull = () => !props.disabled && !busy()
+
+  const pushLabel = () => {
+    if (push.isPending) return language.t("session.review.commit.pushLoading")
+    const count = ahead()
+    if (count !== undefined && count > 0) return language.t("session.review.commit.pushCount", { count })
+    return language.t("session.review.commit.push")
+  }
 
   const submit = () => {
     if (!canSubmit()) return
@@ -159,7 +183,7 @@ export function VcsCommitBarV2(props: {
             : language.t("session.review.commit.action")}
         </ButtonV2>
         <ButtonV2 variant="ghost" size="small" disabled={!canPush()} onClick={() => push.mutate()}>
-          {push.isPending ? language.t("session.review.commit.pushLoading") : language.t("session.review.commit.push")}
+          {pushLabel()}
         </ButtonV2>
         <ButtonV2 variant="ghost" size="small" disabled={!canPull()} onClick={() => pull.mutate()}>
           {pull.isPending ? language.t("session.review.commit.pullLoading") : language.t("session.review.commit.pull")}

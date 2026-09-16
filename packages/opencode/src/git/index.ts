@@ -91,6 +91,7 @@ export interface Interface {
   readonly commit: (cwd: string, message: string) => Effect.Effect<Result>
   readonly push: (cwd: string, remote?: string) => Effect.Effect<Result>
   readonly pull: (cwd: string, remote?: string) => Effect.Effect<Result>
+  readonly aheadBehind: (cwd: string) => Effect.Effect<{ ahead: number; behind: number } | undefined>
 }
 
 const kind = (code: string): Kind => {
@@ -346,6 +347,22 @@ const layer = Layer.effect(
       return yield* run(remote ? ["pull", remote] : ["pull"], { cwd })
     })
 
+    const aheadBehind = Effect.fn("Git.aheadBehind")(function* (cwd: string) {
+      const parse = (value: string) => {
+        const count = Number.parseInt(value.trim(), 10)
+        return Number.isFinite(count) ? count : 0
+      }
+      const [ahead, behind] = yield* Effect.all(
+        [
+          run(["rev-list", "--count", "HEAD", "--not", "@{u}"], { cwd }),
+          run(["rev-list", "--count", "@{u}", "--not", "HEAD"], { cwd }),
+        ],
+        { concurrency: 2 },
+      )
+      if (ahead.exitCode !== 0 || behind.exitCode !== 0) return undefined
+      return { ahead: parse(ahead.text()), behind: parse(behind.text()) }
+    })
+
     return Service.of({
       run,
       branch,
@@ -365,6 +382,7 @@ const layer = Layer.effect(
       commit,
       push,
       pull,
+      aheadBehind,
     })
   }),
 )
