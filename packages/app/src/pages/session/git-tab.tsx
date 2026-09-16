@@ -34,6 +34,7 @@ export function SessionGitTab(props: {
         disabled={props.disabled()}
         hasChanges={props.hasChanges()}
         model={props.model}
+        alwaysShow
       />
       <div class="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
         <Show

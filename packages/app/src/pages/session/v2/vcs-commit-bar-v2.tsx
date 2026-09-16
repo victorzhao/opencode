@@ -12,6 +12,7 @@ export function VcsCommitBarV2(props: {
   disabled?: boolean
   hasChanges: boolean
   model?: () => { providerID: string; modelID: string } | undefined
+  alwaysShow?: boolean
 }) {
   const language = useLanguage()
   const sdk = useSDK()
@@ -121,7 +122,7 @@ export function VcsCommitBarV2(props: {
   }
 
   return (
-    <Show when={props.hasChanges && !props.disabled}>
+    <Show when={(props.alwaysShow || props.hasChanges) && !props.disabled}>
       <div data-component="vcs-commit-bar-v2" class="flex items-center gap-1.5 px-3 py-2">
         <ButtonV2
           variant="ghost"
