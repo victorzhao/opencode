@@ -147,47 +147,47 @@ export function VcsCommitBarV2(props: {
 
   return (
     <Show when={(props.alwaysShow || props.hasChanges) && !props.disabled}>
-      <div data-component="vcs-commit-bar-v2" class="flex items-center gap-1.5 px-3 py-2">
-        <ButtonV2
-          variant="ghost"
-          size="small"
-          disabled={!canGenerate()}
-          onClick={() => generate.mutate()}
-          title={language.t("session.review.commit.generate")}
-          aria-label={language.t("session.review.commit.generate")}
-        >
-          {generate.isPending
-            ? language.t("session.review.commit.generateLoading")
-            : language.t("session.review.commit.generate")}
-        </ButtonV2>
-        <div class="flex-1 min-w-0">
-          <TextInputV2
-            value={message()}
-            onInput={(event) => setMessage(event.currentTarget.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault()
-                submit()
-              }
-            }}
-            placeholder={language.t("session.review.commit.messagePlaceholder")}
-            aria-label={language.t("session.review.commit.messagePlaceholder")}
-            disabled={commit.isPending}
-            showClearButton={message().length > 0}
-            onClearClick={() => setMessage("")}
-          />
+      <div data-component="vcs-commit-bar-v2" class="flex flex-col gap-2 px-3 py-2">
+        <TextInputV2
+          value={message()}
+          onInput={(event) => setMessage(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault()
+              submit()
+            }
+          }}
+          placeholder={language.t("session.review.commit.messagePlaceholder")}
+          aria-label={language.t("session.review.commit.messagePlaceholder")}
+          disabled={commit.isPending}
+          showClearButton={message().length > 0}
+          onClearClick={() => setMessage("")}
+        />
+        <div class="flex flex-wrap items-center gap-1.5">
+          <ButtonV2
+            variant="ghost"
+            size="small"
+            disabled={!canGenerate()}
+            onClick={() => generate.mutate()}
+            title={language.t("session.review.commit.generate")}
+            aria-label={language.t("session.review.commit.generate")}
+          >
+            {generate.isPending
+              ? language.t("session.review.commit.generateLoading")
+              : language.t("session.review.commit.generate")}
+          </ButtonV2>
+          <ButtonV2 variant="neutral" size="normal" disabled={!canSubmit()} onClick={submit}>
+            {commit.isPending
+              ? language.t("session.review.commit.actionLoading")
+              : language.t("session.review.commit.action")}
+          </ButtonV2>
+          <ButtonV2 variant="ghost" size="small" disabled={!canPush()} onClick={() => push.mutate()}>
+            {pushLabel()}
+          </ButtonV2>
+          <ButtonV2 variant="ghost" size="small" disabled={!canPull()} onClick={() => pull.mutate()}>
+            {pull.isPending ? language.t("session.review.commit.pullLoading") : language.t("session.review.commit.pull")}
+          </ButtonV2>
         </div>
-        <ButtonV2 variant="neutral" size="normal" disabled={!canSubmit()} onClick={submit}>
-          {commit.isPending
-            ? language.t("session.review.commit.actionLoading")
-            : language.t("session.review.commit.action")}
-        </ButtonV2>
-        <ButtonV2 variant="ghost" size="small" disabled={!canPush()} onClick={() => push.mutate()}>
-          {pushLabel()}
-        </ButtonV2>
-        <ButtonV2 variant="ghost" size="small" disabled={!canPull()} onClick={() => pull.mutate()}>
-          {pull.isPending ? language.t("session.review.commit.pullLoading") : language.t("session.review.commit.pull")}
-        </ButtonV2>
       </div>
     </Show>
   )
