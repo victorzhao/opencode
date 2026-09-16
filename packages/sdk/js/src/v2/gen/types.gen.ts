@@ -2374,6 +2374,11 @@ export type VcsCommitError = {
   }
 }
 
+export type VcsGenerateMessageInput = {
+  providerID?: string
+  modelID?: string
+}
+
 export type VcsGenerateMessageResult = {
   message: string
 }
@@ -2383,6 +2388,30 @@ export type VcsMessageError = {
   data: {
     message: string
     reason: "non-git" | "nothing-to-commit" | "no-model" | "generate-failed"
+  }
+}
+
+export type VcsPushResult = {
+  pushed: boolean
+}
+
+export type VcsPushError = {
+  name: "VcsPushError"
+  data: {
+    message: string
+    reason: "non-git" | "no-branch" | "push-failed"
+  }
+}
+
+export type VcsPullResult = {
+  pulled: boolean
+}
+
+export type VcsPullError = {
+  name: "VcsPullError"
+  data: {
+    message: string
+    reason: "non-git" | "no-branch" | "no-upstream" | "pull-failed"
   }
 }
 
@@ -8360,7 +8389,7 @@ export type VcsCommitResponses = {
 export type VcsCommitResponse = VcsCommitResponses[keyof VcsCommitResponses]
 
 export type VcsMessageData = {
-  body?: never
+  body?: VcsGenerateMessageInput
   path?: never
   query?: {
     directory?: string
@@ -8386,6 +8415,62 @@ export type VcsMessageResponses = {
 }
 
 export type VcsMessageResponse = VcsMessageResponses[keyof VcsMessageResponses]
+
+export type VcsPushData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/vcs/push"
+}
+
+export type VcsPushErrors = {
+  /**
+   * VcsPushError | InvalidRequestError
+   */
+  400: VcsPushError | InvalidRequestError
+}
+
+export type VcsPushError2 = VcsPushErrors[keyof VcsPushErrors]
+
+export type VcsPushResponses = {
+  /**
+   * VCS changes pushed
+   */
+  200: VcsPushResult
+}
+
+export type VcsPushResponse = VcsPushResponses[keyof VcsPushResponses]
+
+export type VcsPullData = {
+  body?: never
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/vcs/pull"
+}
+
+export type VcsPullErrors = {
+  /**
+   * VcsPullError | InvalidRequestError
+   */
+  400: VcsPullError | InvalidRequestError
+}
+
+export type VcsPullError2 = VcsPullErrors[keyof VcsPullErrors]
+
+export type VcsPullResponses = {
+  /**
+   * VCS changes pulled
+   */
+  200: VcsPullResult
+}
+
+export type VcsPullResponse = VcsPullResponses[keyof VcsPullResponses]
 
 export type CommandListData = {
   body?: never

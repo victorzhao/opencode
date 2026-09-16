@@ -696,6 +696,12 @@ export const dict = {
   "session.review.commit.noChanges": "There are no changes to commit",
   "session.review.commit.generate": "Generate with AI",
   "session.review.commit.generateLoading": "Generating...",
+  "session.review.commit.push": "Push",
+  "session.review.commit.pushLoading": "Pushing...",
+  "session.review.commit.pushSuccess": "Changes pushed",
+  "session.review.commit.pull": "Pull",
+  "session.review.commit.pullLoading": "Pulling...",
+  "session.review.commit.pullSuccess": "Changes pulled",
 
   "session.files.selectToOpen": "Select a file to open",
   "session.files.all": "All files",

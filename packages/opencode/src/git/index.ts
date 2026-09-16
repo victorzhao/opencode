@@ -89,6 +89,8 @@ export interface Interface {
   readonly statUntracked: (cwd: string, file: string) => Effect.Effect<Stat | undefined>
   readonly applyPatch: (cwd: string, patch: string) => Effect.Effect<Result>
   readonly commit: (cwd: string, message: string) => Effect.Effect<Result>
+  readonly push: (cwd: string, remote?: string) => Effect.Effect<Result>
+  readonly pull: (cwd: string, remote?: string) => Effect.Effect<Result>
 }
 
 const kind = (code: string): Kind => {
@@ -330,6 +332,20 @@ const layer = Layer.effect(
       return yield* run(["commit", "--no-gpg-sign", "-m", message], { cwd })
     })
 
+    const push = Effect.fn("Git.push")(function* (cwd: string, remote?: string) {
+      const first = yield* run(remote ? ["push", remote] : ["push"], { cwd })
+      if (first.exitCode === 0) return first
+      const output = `${first.stderr.toString("utf8")}\n${first.text()}`
+      if (!/no upstream|has no upstream|set upstream|upstream/i.test(output)) return first
+      const current = yield* branch(cwd)
+      if (!current) return first
+      return yield* run(["push", "--set-upstream", remote ?? "origin", current], { cwd })
+    })
+
+    const pull = Effect.fn("Git.pull")(function* (cwd: string, remote?: string) {
+      return yield* run(remote ? ["pull", remote] : ["pull"], { cwd })
+    })
+
     return Service.of({
       run,
       branch,
@@ -347,6 +363,8 @@ const layer = Layer.effect(
       statUntracked,
       applyPatch,
       commit,
+      push,
+      pull,
     })
   }),
 )

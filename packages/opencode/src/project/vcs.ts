@@ -289,6 +289,22 @@ export const GenerateMessageResult = Schema.Struct({
 }).annotate({ identifier: "VcsGenerateMessageResult" })
 export type GenerateMessageResult = Schema.Schema.Type<typeof GenerateMessageResult>
 
+export const GenerateMessageInput = Schema.Struct({
+  providerID: Schema.optional(Schema.String),
+  modelID: Schema.optional(Schema.String),
+}).annotate({ identifier: "VcsGenerateMessageInput" })
+export type GenerateMessageInput = Schema.Schema.Type<typeof GenerateMessageInput>
+
+export const PushResult = Schema.Struct({
+  pushed: Schema.Boolean,
+}).annotate({ identifier: "VcsPushResult" })
+export type PushResult = Schema.Schema.Type<typeof PushResult>
+
+export const PullResult = Schema.Struct({
+  pulled: Schema.Boolean,
+}).annotate({ identifier: "VcsPullResult" })
+export type PullResult = Schema.Schema.Type<typeof PullResult>
+
 export class PatchApplyError extends Schema.TaggedErrorClass<PatchApplyError>()("VcsPatchApplyError", {
   message: Schema.String,
   reason: Schema.Literals(["non-git", "not-clean"]),
@@ -304,6 +320,16 @@ export class MessageError extends Schema.TaggedErrorClass<MessageError>()("VcsMe
   reason: Schema.Literals(["non-git", "nothing-to-commit", "no-model", "generate-failed"]),
 }) {}
 
+export class PushError extends Schema.TaggedErrorClass<PushError>()("VcsPushError", {
+  message: Schema.String,
+  reason: Schema.Literals(["non-git", "no-branch", "push-failed"]),
+}) {}
+
+export class PullError extends Schema.TaggedErrorClass<PullError>()("VcsPullError", {
+  message: Schema.String,
+  reason: Schema.Literals(["non-git", "no-branch", "no-upstream", "pull-failed"]),
+}) {}
+
 export interface Interface {
   readonly init: () => Effect.Effect<void>
   readonly branch: () => Effect.Effect<string | undefined>
@@ -313,6 +339,8 @@ export interface Interface {
   readonly diffRaw: () => Effect.Effect<string>
   readonly apply: (input: ApplyInput) => Effect.Effect<ApplyResult, PatchApplyError>
   readonly commit: (input: CommitInput) => Effect.Effect<CommitResult, CommitError>
+  readonly push: () => Effect.Effect<PushResult, PushError>
+  readonly pull: () => Effect.Effect<PullResult, PullError>
 }
 
 interface State {
@@ -482,6 +510,61 @@ const layer: Layer.Layer<Service, never, Git.Service | EventV2Bridge.Service> = 
         const head = yield* git.run(["rev-parse", "HEAD"], { cwd: ctx.directory })
         const hash = head.exitCode === 0 ? head.text().trim() || undefined : undefined
         return { committed: true, hash }
+      }),
+      push: Effect.fn("Vcs.push")(function* () {
+        const ctx = yield* InstanceState.context
+        if (ctx.project.vcs !== "git") {
+          return yield* new PushError({
+            message: "Changes can't be pushed because the project is not git-based",
+            reason: "non-git",
+          })
+        }
+        const branch = yield* git.branch(ctx.directory)
+        if (!branch) {
+          return yield* new PushError({
+            message: "Changes can't be pushed because the working tree has no current branch",
+            reason: "no-branch",
+          })
+        }
+        const result = yield* git.push(ctx.directory)
+        if (result.exitCode !== 0) {
+          const output =
+            result.stderr.toString("utf8").trim() || result.text().trim() || "Failed to push changes"
+          return yield* new PushError({ message: output, reason: "push-failed" })
+        }
+        return { pushed: true }
+      }),
+      pull: Effect.fn("Vcs.pull")(function* () {
+        const ctx = yield* InstanceState.context
+        if (ctx.project.vcs !== "git") {
+          return yield* new PullError({
+            message: "Changes can't be pulled because the project is not git-based",
+            reason: "non-git",
+          })
+        }
+        const branch = yield* git.branch(ctx.directory)
+        if (!branch) {
+          return yield* new PullError({
+            message: "Changes can't be pulled because the working tree has no current branch",
+            reason: "no-branch",
+          })
+        }
+        const upstream = yield* git.run(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], {
+          cwd: ctx.directory,
+        })
+        if (upstream.exitCode !== 0) {
+          return yield* new PullError({
+            message: "The current branch has no upstream configured. Push once to set it up.",
+            reason: "no-upstream",
+          })
+        }
+        const pulled = yield* git.pull(ctx.directory)
+        if (pulled.exitCode !== 0) {
+          const output =
+            pulled.stderr.toString("utf8").trim() || pulled.text().trim() || "Failed to pull changes"
+          return yield* new PullError({ message: output, reason: "pull-failed" })
+        }
+        return { pulled: true }
       }),
     })
   }),

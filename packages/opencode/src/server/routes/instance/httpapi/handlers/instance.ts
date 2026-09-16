@@ -10,10 +10,12 @@ import { LLM } from "@/session/llm"
 import { MessageID, SessionID } from "@/session/schema"
 import { Skill } from "@/skill"
 import { LLMEvent } from "@opencode-ai/llm"
+import { ModelV2 } from "@opencode-ai/core/model"
+import { ProviderV2 } from "@opencode-ai/core/provider"
 import { Effect, Stream } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { InstanceHttpApi } from "../api"
-import { ApiVcsApplyError, ApiVcsCommitError, ApiVcsMessageError } from "../groups/instance"
+import { ApiVcsApplyError, ApiVcsCommitError, ApiVcsMessageError, ApiVcsPullError, ApiVcsPushError } from "../groups/instance"
 import { markInstanceForDisposal } from "../lifecycle"
 
 const COMMIT_MESSAGE_AGENT: Agent.Info = {
@@ -103,24 +105,38 @@ export const instanceHandlers = HttpApiBuilder.group(InstanceHttpApi, "instance"
       )
     })
 
-    const messageVcs = Effect.fn("InstanceHttpApi.vcsMessage")(function* () {
+    const messageVcs = Effect.fn("InstanceHttpApi.vcsMessage")(function* (ctx: {
+      payload: Vcs.GenerateMessageInput
+    }) {
       const fail = (message: string, reason: Vcs.MessageError["reason"]) =>
         new ApiVcsMessageError({ name: "VcsMessageError", data: { message, reason } })
-      const ctx = yield* InstanceState.context
-      if (ctx.project.vcs !== "git") {
+      const vcsCtx = yield* InstanceState.context
+      if (vcsCtx.project.vcs !== "git") {
         return yield* fail("Commit messages can't be generated because the project is not git-based", "non-git")
       }
       const diffs = yield* vcs.diff("git")
       if (diffs.length === 0) {
         return yield* fail("There are no changes to describe", "nothing-to-commit")
       }
-      const fallback = yield* provider.defaultModel().pipe(Effect.catch(() => Effect.succeed(undefined)))
-      if (!fallback) {
-        return yield* fail("No model is configured to generate the commit message", "no-model")
-      }
-      const small = yield* provider.getSmallModel(fallback.providerID).pipe(Effect.catch(() => Effect.succeed(undefined)))
-      const model =
-        small ?? (yield* provider.getModel(fallback.providerID, fallback.modelID).pipe(Effect.catch(() => Effect.succeed(undefined))))
+      const specified =
+        ctx.payload.providerID && ctx.payload.modelID
+          ? yield* provider
+              .getModel(ProviderV2.ID.make(ctx.payload.providerID), ModelV2.ID.make(ctx.payload.modelID))
+              .pipe(Effect.catch(() => Effect.succeed(undefined)))
+          : undefined
+      const configured = specified
+        ? specified
+        : yield* Effect.gen(function* () {
+            const fallback = yield* provider.defaultModel().pipe(Effect.catch(() => Effect.succeed(undefined)))
+            if (!fallback) return undefined
+            return (
+              (yield* provider.getSmallModel(fallback.providerID).pipe(Effect.catch(() => Effect.succeed(undefined)))) ??
+              (yield* provider
+                .getModel(fallback.providerID, fallback.modelID)
+                .pipe(Effect.catch(() => Effect.succeed(undefined))))
+            )
+          })
+      const model = configured
       if (!model) {
         return yield* fail("No model is configured to generate the commit message", "no-model")
       }
@@ -162,6 +178,36 @@ export const instanceHandlers = HttpApiBuilder.group(InstanceHttpApi, "instance"
       return { message }
     })
 
+    const pushVcs = Effect.fn("InstanceHttpApi.vcsPush")(function* () {
+      return yield* vcs.push().pipe(
+        Effect.mapError(
+          (error) =>
+            new ApiVcsPushError({
+              name: "VcsPushError",
+              data: {
+                message: error.message,
+                reason: error.reason,
+              },
+            }),
+        ),
+      )
+    })
+
+    const pullVcs = Effect.fn("InstanceHttpApi.vcsPull")(function* () {
+      return yield* vcs.pull().pipe(
+        Effect.mapError(
+          (error) =>
+            new ApiVcsPullError({
+              name: "VcsPullError",
+              data: {
+                message: error.message,
+                reason: error.reason,
+              },
+            }),
+        ),
+      )
+    })
+
     const getCommand = Effect.fn("InstanceHttpApi.command")(function* () {
       return yield* command.list()
     })
@@ -192,6 +238,8 @@ export const instanceHandlers = HttpApiBuilder.group(InstanceHttpApi, "instance"
       .handle("vcsApply", applyVcs)
       .handle("vcsCommit", commitVcs)
       .handle("vcsMessage", messageVcs)
+      .handle("vcsPush", pushVcs)
+      .handle("vcsPull", pullVcs)
       .handle("command", getCommand)
       .handle("agent", getAgent)
       .handle("skill", getSkill)

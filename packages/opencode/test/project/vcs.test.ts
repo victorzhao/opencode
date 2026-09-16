@@ -397,6 +397,105 @@ describe("Vcs commit", () => {
   )
 })
 
+describe("Vcs push", () => {
+  afterEach(async () => {
+    await disposeAllInstances()
+  })
+
+  it.instance(
+    "push() pushes the current branch, creating the upstream when missing",
+    () =>
+      Effect.gen(function* () {
+        const test = yield* TestInstance
+        const remote = yield* tmpdirScoped()
+        const origin = path.join(remote, "origin.git")
+        yield* git(test.directory, ["init", "--bare", origin])
+        yield* git(test.directory, ["remote", "add", "origin", origin])
+        yield* write(path.join(test.directory, "push.txt"), "push\n")
+
+        const vcs = yield* init()
+        const committed = yield* vcs.commit({ message: "push me" })
+        const pushed = yield* vcs.push()
+
+        expect(pushed.pushed).toBe(true)
+        const listing = yield* Git.Service.use((service) => service.run(["ls-remote", "origin"], { cwd: test.directory }))
+        expect(listing.exitCode).toBe(0)
+        expect(listing.text()).toContain(committed.hash ?? "")
+        expect(yield* vcs.push()).toEqual({ pushed: true })
+      }),
+    { git: true },
+  )
+
+  it.instance("push() reports non-git outside a repository", () =>
+    Effect.gen(function* () {
+      const vcs = yield* init()
+      const error = yield* vcs.push().pipe(Effect.flip)
+
+      expect(error.reason).toBe("non-git")
+    }),
+  )
+})
+
+describe("Vcs pull", () => {
+  afterEach(async () => {
+    await disposeAllInstances()
+  })
+
+  it.instance(
+    "pull() fast-forwards the working tree from its upstream",
+    () =>
+      Effect.gen(function* () {
+        const test = yield* TestInstance
+        const remote = yield* tmpdirScoped()
+        const origin = path.join(remote, "origin.git")
+        yield* git(test.directory, ["init", "--bare", origin])
+        yield* git(test.directory, ["remote", "add", "origin", origin])
+        yield* write(path.join(test.directory, "pull.txt"), "one\n")
+
+        const vcs = yield* init()
+        yield* vcs.commit({ message: "first" })
+        yield* vcs.push()
+        yield* write(path.join(test.directory, "pull.txt"), "two\n")
+        yield* vcs.commit({ message: "second" })
+        yield* vcs.push()
+        yield* git(test.directory, ["reset", "--hard", "HEAD~1"])
+
+        const pulled = yield* vcs.pull()
+
+        expect(pulled.pulled).toBe(true)
+        const content = yield* Effect.promise(() => fs.readFile(path.join(test.directory, "pull.txt"), "utf8"))
+        expect(content.replace(/\r\n/g, "\n")).toBe("two\n")
+        expect(yield* vcs.diff("git")).toEqual([])
+      }),
+    { git: true },
+  )
+
+  it.instance(
+    "pull() reports no-upstream when the branch tracks nothing",
+    () =>
+      Effect.gen(function* () {
+        const test = yield* TestInstance
+        yield* write(path.join(test.directory, "local.txt"), "local\n")
+
+        const vcs = yield* init()
+        yield* vcs.commit({ message: "local only" })
+        const error = yield* vcs.pull().pipe(Effect.flip)
+
+        expect(error.reason).toBe("no-upstream")
+      }),
+    { git: true },
+  )
+
+  it.instance("pull() reports non-git outside a repository", () =>
+    Effect.gen(function* () {
+      const vcs = yield* init()
+      const error = yield* vcs.pull().pipe(Effect.flip)
+
+      expect(error.reason).toBe("non-git")
+    }),
+  )
+})
+
 describe("Vcs.buildCommitPrompt", () => {
   test("summarizes files with stats and patches", () => {
     const prompt = Vcs.buildCommitPrompt([

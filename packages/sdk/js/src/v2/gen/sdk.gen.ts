@@ -394,10 +394,15 @@ import type {
   VcsDiffRawErrors,
   VcsDiffRawResponses,
   VcsDiffResponses,
+  VcsGenerateMessageInput,
   VcsGetErrors,
   VcsGetResponses,
   VcsMessageErrors,
   VcsMessageResponses,
+  VcsPullErrors,
+  VcsPullResponses,
+  VcsPushErrors,
+  VcsPushResponses,
   VcsStatusErrors,
   VcsStatusResponses,
   WorktreeCreateErrors,
@@ -2201,6 +2206,43 @@ export class Vcs extends HeyApiClient {
     parameters?: {
       directory?: string
       workspace?: string
+      vcsGenerateMessageInput?: VcsGenerateMessageInput
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { key: "vcsGenerateMessageInput", map: "body" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<VcsMessageResponses, VcsMessageErrors, ThrowOnError>({
+      url: "/vcs/message",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * Push VCS changes
+   *
+   * Push the current branch to its remote, setting the upstream when missing.
+   */
+  public push<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -2215,8 +2257,38 @@ export class Vcs extends HeyApiClient {
         },
       ],
     )
-    return (options?.client ?? this.client).post<VcsMessageResponses, VcsMessageErrors, ThrowOnError>({
-      url: "/vcs/message",
+    return (options?.client ?? this.client).post<VcsPushResponses, VcsPushErrors, ThrowOnError>({
+      url: "/vcs/push",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Pull VCS changes
+   *
+   * Pull the current branch from its upstream remote.
+   */
+  public pull<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<VcsPullResponses, VcsPullErrors, ThrowOnError>({
+      url: "/vcs/pull",
       ...options,
       ...params,
     })

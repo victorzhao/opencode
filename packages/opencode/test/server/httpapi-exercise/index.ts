@@ -147,7 +147,17 @@ const scenarios: Scenario[] = [
   http.protected
     .post("/vcs/message", "vcs.message")
     .inProject({ git: false })
-    .at((ctx) => ({ path: "/vcs/message", headers: ctx.headers() }))
+    .at((ctx) => ({ path: "/vcs/message", headers: ctx.headers(), body: {} }))
+    .status(400, undefined, "status"),
+  http.protected
+    .post("/vcs/push", "vcs.push")
+    .inProject({ git: false })
+    .at((ctx) => ({ path: "/vcs/push", headers: ctx.headers() }))
+    .status(400, undefined, "status"),
+  http.protected
+    .post("/vcs/pull", "vcs.pull")
+    .inProject({ git: false })
+    .at((ctx) => ({ path: "/vcs/pull", headers: ctx.headers() }))
     .status(400, undefined, "status"),
   http.protected.get("/command", "command.list").json(200, array, "status"),
   http.protected.get("/agent", "app.agents").json(200, array, "status"),

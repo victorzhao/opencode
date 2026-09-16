@@ -62,6 +62,28 @@ export class ApiVcsMessageError extends Schema.ErrorClass<ApiVcsMessageError>("V
   { httpApiStatus: 400 },
 ) {}
 
+export class ApiVcsPushError extends Schema.ErrorClass<ApiVcsPushError>("VcsPushError")(
+  {
+    name: Schema.Literal("VcsPushError"),
+    data: Schema.Struct({
+      message: Schema.String,
+      reason: Schema.Literals(["non-git", "no-branch", "push-failed"]),
+    }),
+  },
+  { httpApiStatus: 400 },
+) {}
+
+export class ApiVcsPullError extends Schema.ErrorClass<ApiVcsPullError>("VcsPullError")(
+  {
+    name: Schema.Literal("VcsPullError"),
+    data: Schema.Struct({
+      message: Schema.String,
+      reason: Schema.Literals(["non-git", "no-branch", "no-upstream", "pull-failed"]),
+    }),
+  },
+  { httpApiStatus: 400 },
+) {}
+
 export const InstancePaths = {
   dispose: "/instance/dispose",
   path: "/path",
@@ -72,6 +94,8 @@ export const InstancePaths = {
   vcsApply: "/vcs/apply",
   vcsCommit: "/vcs/commit",
   vcsMessage: "/vcs/message",
+  vcsPush: "/vcs/push",
+  vcsPull: "/vcs/pull",
   command: "/command",
   agent: "/agent",
   skill: "/skill",
@@ -174,6 +198,7 @@ export const InstanceApi = HttpApi.make("instance")
         ),
         HttpApiEndpoint.post("vcsMessage", InstancePaths.vcsMessage, {
           query: WorkspaceRoutingQuery,
+          payload: Vcs.GenerateMessageInput,
           success: described(Vcs.GenerateMessageResult, "VCS commit message generated"),
           error: ApiVcsMessageError,
         }).annotateMerge(
@@ -181,6 +206,28 @@ export const InstanceApi = HttpApi.make("instance")
             identifier: "vcs.message",
             summary: "Generate VCS commit message",
             description: "Generate a commit message for current uncommitted changes with AI.",
+          }),
+        ),
+        HttpApiEndpoint.post("vcsPush", InstancePaths.vcsPush, {
+          query: WorkspaceRoutingQuery,
+          success: described(Vcs.PushResult, "VCS changes pushed"),
+          error: ApiVcsPushError,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "vcs.push",
+            summary: "Push VCS changes",
+            description: "Push the current branch to its remote, setting the upstream when missing.",
+          }),
+        ),
+        HttpApiEndpoint.post("vcsPull", InstancePaths.vcsPull, {
+          query: WorkspaceRoutingQuery,
+          success: described(Vcs.PullResult, "VCS changes pulled"),
+          error: ApiVcsPullError,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "vcs.pull",
+            summary: "Pull VCS changes",
+            description: "Pull the current branch from its upstream remote.",
           }),
         ),
         HttpApiEndpoint.get("command", InstancePaths.command, {

@@ -374,6 +374,11 @@ export default function Page() {
   const { params, sessionKey, workspaceKey, tabs, view } = useSessionLayout()
   const reviewMode = () => view().review.mode() ?? "git"
   const reviewFile = () => view().review.file()
+  const commitModel = () => {
+    const current = prompt.model.current()
+    if (!current) return undefined
+    return { providerID: current.providerID, modelID: current.modelID }
+  }
   const sessionOwnership = createSessionOwnership(sessionKey)
   const newSessionDesign = createMemo(() => settings.general.newLayoutDesigns())
 
@@ -1352,7 +1357,12 @@ export default function Page() {
   const reviewPanelV2 = () => (
     <div class="flex flex-col h-full overflow-hidden bg-v2-background-bg-base contain-strict">
       <Show when={reviewMode() === "git" && sync().project?.vcs === "git"}>
-        <VcsCommitBarV2 directory={sdk().directory} disabled={!reviewReady()} hasChanges={hasReview()} />
+        <VcsCommitBarV2
+          directory={sdk().directory}
+          disabled={!reviewReady()}
+          hasChanges={hasReview()}
+          model={commitModel}
+        />
       </Show>
       <Show when={reviewPanelV2Rendered()}>
         <ReviewPanelV2 {...reviewPanelV2Props()} />
@@ -1369,7 +1379,12 @@ export default function Page() {
       }}
     >
       <Show when={reviewMode() === "git" && sync().project?.vcs === "git"}>
-        <VcsCommitBarV2 directory={sdk().directory} disabled={!reviewReady()} hasChanges={hasReview()} />
+        <VcsCommitBarV2
+          directory={sdk().directory}
+          disabled={!reviewReady()}
+          hasChanges={hasReview()}
+          model={commitModel}
+        />
       </Show>
       <div class="relative pt-2 flex-1 min-h-0 overflow-hidden">
         {reviewContent({
@@ -2326,6 +2341,7 @@ export default function Page() {
               commitVisible={() => reviewMode() === "git" && sync().project?.vcs === "git"}
               commitDirectory={() => sdk().directory}
               commitDisabled={() => !reviewReady()}
+              commitModel={commitModel}
             />
           </Suspense>
         </Show>
@@ -2360,6 +2376,7 @@ export default function Page() {
                       commitVisible={() => reviewMode() === "git" && sync().project?.vcs === "git"}
                       commitDirectory={() => sdk().directory}
                       commitDisabled={() => !reviewReady()}
+                      commitModel={commitModel}
                     />
                   </Suspense>
                 </div>

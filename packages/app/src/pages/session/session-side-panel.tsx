@@ -85,6 +85,7 @@ export function SessionSidePanel(props: {
   commitVisible?: () => boolean
   commitDirectory?: () => string
   commitDisabled?: () => boolean
+  commitModel?: () => { providerID: string; modelID: string } | undefined
 }) {
   const layout = useLayout()
   const settings = useSettings()
@@ -808,6 +809,7 @@ export function SessionSidePanel(props: {
                             directory={props.commitDirectory?.() ?? projectDirectory()}
                             disabled={props.commitDisabled?.() ?? !props.diffsReady()}
                             hasChanges={props.hasReview()}
+                            model={props.commitModel}
                           />
                         </Show>
                         <Switch>
